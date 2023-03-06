@@ -21,12 +21,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/typeurl"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/sirupsen/logrus"
 )
 
 const configFilename = "config.json"
@@ -46,6 +48,8 @@ func LoadBundle(ctx context.Context, root, id string) (*Bundle, error) {
 
 // NewBundle returns a new bundle on disk
 func NewBundle(ctx context.Context, root, state, id string, spec typeurl.Any) (b *Bundle, err error) {
+	logrus.Infof("******** new bundle ***********")
+	logrus.Infof("ctx %s root %s state %s id %s spec %s", ctx, root, state, id, spec)
 	if err := identifiers.Validate(id); err != nil {
 		return nil, fmt.Errorf("invalid task id %s: %w", id, err)
 	}
@@ -68,6 +72,10 @@ func NewBundle(ctx context.Context, root, state, id string, spec typeurl.Any) (b
 			}
 		}
 	}()
+		logrus.Infof("*******************")
+		logrus.Infof(string(debug.Stack()))
+		logrus.Infof("*******************")
+		logrus.Infof("*******************")
 	// create state directory for the bundle
 	if err := os.MkdirAll(filepath.Dir(b.Path), 0711); err != nil {
 		return nil, err
@@ -111,6 +119,8 @@ func NewBundle(ctx context.Context, root, state, id string, spec typeurl.Any) (b
 			return nil, fmt.Errorf("failed to write %s", configFilename)
 		}
 	}
+	logrus.Infof("******** return  bundle ***********")
+	logrus.Infof("b %s", b)
 	return b, nil
 }
 

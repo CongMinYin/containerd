@@ -26,6 +26,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"os/exec"
+	"runtime/debug"
 
 	"github.com/containerd/cgroups"
 	cgroupsv2 "github.com/containerd/cgroups/v2"
@@ -59,6 +61,7 @@ func NewContainer(ctx context.Context, platform stdio.Platform, r *task.CreateTa
 		}
 	}
 
+	// 有一个外部变量r *task.CreateTaskRequest
 	var mounts []process.Mount
 	for _, m := range r.Rootfs {
 		mounts = append(mounts, process.Mount{
@@ -68,6 +71,13 @@ func NewContainer(ctx context.Context, platform stdio.Platform, r *task.CreateTa
 			Options: m.Options,
 		})
 	}
+	out, err1 := exec.Command("ls", "/var/run/containerd/io.containerd.runtime.v2.task/default/redis").Output()
+    if err1 != nil {
+			logrus.WithError(err).Errorf("ls failed")
+    }
+		logrus.Infof("***** ls 0 ****")
+		//这里有bundle和rootfs目录，但rootfs是空的
+    logrus.Infof(string(out))
 
 	rootfs := ""
 	if len(mounts) > 0 {
@@ -76,7 +86,7 @@ func NewContainer(ctx context.Context, platform stdio.Platform, r *task.CreateTa
 			return nil, err
 		}
 	}
-
+	logrus.Infof("======= mounts %s", mounts)
 	config := &process.CreateConfig{
 		ID:               r.ID,
 		Bundle:           r.Bundle,
@@ -98,6 +108,7 @@ func NewContainer(ctx context.Context, platform stdio.Platform, r *task.CreateTa
 	if err := WriteRuntime(r.Bundle, opts.BinaryName); err != nil {
 		return nil, err
 	}
+	logrus.Infof("======= rootfs %s", rootfs)
 	defer func() {
 		if retErr != nil {
 			if err := mount.UnmountAll(rootfs, 0); err != nil {
@@ -111,10 +122,23 @@ func NewContainer(ctx context.Context, platform stdio.Platform, r *task.CreateTa
 			Source:  rm.Source,
 			Options: rm.Options,
 		}
+		logrus.Infof("*******************")
+		logrus.Infof("*******  new container  ************")
+		logrus.Infof(string(debug.Stack()))
+		logrus.Infof("*******************")
+		logrus.Infof("*******************")
+
+		logrus.Infof("===Mount(rootfs)==== %s", rootfs)
 		if err := m.Mount(rootfs); err != nil {
 			return nil, fmt.Errorf("failed to mount rootfs component %v: %w", m, err)
 		}
 	}
+		out, err1 = exec.Command("ls", "/var/run/containerd/io.containerd.runtime.v2.task/default/redis/").Output()
+    if err1 != nil {
+			logrus.WithError(err).Errorf("ls failed")
+    }
+		logrus.Infof("***** ls 5 ****")
+    logrus.Infof(string(out))
 
 	p, err := newInit(
 		ctx,
@@ -126,6 +150,12 @@ func NewContainer(ctx context.Context, platform stdio.Platform, r *task.CreateTa
 		opts,
 		rootfs,
 	)
+		out, err1 = exec.Command("ls", "/var/run/containerd/io.containerd.runtime.v2.task/default/redis/").Output()
+    if err1 != nil {
+			logrus.WithError(err).Errorf("ls failed")
+    }
+		logrus.Infof("***** ls 6 ****")
+    logrus.Infof(string(out))
 	if err != nil {
 		return nil, errdefs.ToGRPC(err)
 	}
@@ -160,6 +190,12 @@ func NewContainer(ctx context.Context, platform stdio.Platform, r *task.CreateTa
 		}
 		container.cgroup = cg
 	}
+	out, err1 = exec.Command("ls", "/var/run/containerd/io.containerd.runtime.v2.task/default/redis/").Output()
+    if err1 != nil {
+			logrus.WithError(err).Errorf("ls failed")
+    }
+		logrus.Infof("***** ls 7 ****")
+    logrus.Infof(string(out))
 	return container, nil
 }
 

@@ -23,6 +23,7 @@ import (
 	"path"
 	"strings"
 	"time"
+	"github.com/sirupsen/logrus"
 
 	exec "golang.org/x/sys/execabs"
 	"golang.org/x/sys/unix"
@@ -89,24 +90,59 @@ func (m *Mount) Mount(target string) (err error) {
 			// Mount the loop device instead
 			source = loFile.Name()
 		}
+
+		out, err1 := exec.Command("ls", "/var/run/containerd/io.containerd.runtime.v2.task/default/redis/rootfs").Output()
+    if err1 != nil {
+			logrus.WithError(err).Errorf("ls failed")
+    }
+		logrus.Infof("***** ls 1 ****")
+		//这里已经有bundle和rootfs目录
+    logrus.Infof(string(out))
+
+		logrus.Infof("===mountAt==== chdir %s, \nsource %s, \ntarget %s, \nm.Type %s, \nuintptr(oflags) %s, \ndata %s,", chdir, source, target, m.Type, uintptr(oflags), data)
+		// 这条命令实现了挂载rootfs
 		if err := mountAt(chdir, source, target, m.Type, uintptr(oflags), data); err != nil {
 			return err
 		}
 	}
+	out, err1 := exec.Command("ls", "/var/run/containerd/io.containerd.runtime.v2.task/default/redis/rootfs").Output()
+	if err1 != nil {
+		logrus.WithError(err).Errorf("ls failed")
+	}
+	logrus.Infof("***** ls 2 ****")
+	//这里已经有了rootfs
+	logrus.Infof(string(out))
 
 	if flags&ptypes != 0 {
 		// Change the propagation type.
 		const pflags = ptypes | unix.MS_REC | unix.MS_SILENT
+		logrus.Infof("===unix.Mount1==== %s, %s", target, uintptr(flags&pflags))
 		if err := unix.Mount("", target, "", uintptr(flags&pflags), ""); err != nil {
 			return err
 		}
 	}
 
+		out, err1 = exec.Command("ls", "/var/run/containerd/io.containerd.runtime.v2.task/default/redis/rootfs").Output()
+    if err1 != nil {
+			logrus.WithError(err).Errorf("ls failed")
+    }
+		logrus.Infof("***** ls 3 ****")
+    logrus.Infof(string(out))
+
 	const broflags = unix.MS_BIND | unix.MS_RDONLY
 	if oflags&broflags == broflags {
 		// Remount the bind to apply read only.
+		logrus.Infof("===unix.Mount2==== %s, %s", target, uintptr(oflags|unix.MS_REMOUNT))
 		return unix.Mount("", target, "", uintptr(oflags|unix.MS_REMOUNT), "")
 	}
+
+		out, err1 = exec.Command("ls", "/var/run/containerd/io.containerd.runtime.v2.task/default/redis/rootfs").Output()
+    if err1 != nil {
+			logrus.WithError(err).Errorf("ls failed")
+    }
+		logrus.Infof("***** ls 4 ****")
+    logrus.Infof(string(out))
+
 	return nil
 }
 
